@@ -1,13 +1,24 @@
 <template>
   <div class="overlay" @click.stop>
     <div
-      v-for="item in blockTypes"
+      v-for="item in blockTypes.filter(item => item !== 'target')"
       ref="blockRefs"
       class="block"
       :class="item"
       :key="`block_${id}_${item}`"
       :style="[blockStyles[item], { backgroundColor: overlayColor }]"
     ></div>
+    <el-popover
+      title="Title"
+      content="Top Left prompts info"
+      placement="top-start"
+      trigger="hover"
+      :visible="popverVisible"
+    >
+      <template #default>
+        <div class="target-block" :style="blockStyles.target"></div>
+      </template>
+    </el-popover>
   </div>
 </template>
 
@@ -54,10 +65,11 @@ const props = defineProps({
 const emit = defineEmits(['step-change', 'close'])
 
 const step = ref(0)
-const blockTypes = ['top', 'right', 'bottom', 'left']
+const blockTypes = ['top', 'right', 'bottom', 'left', 'target']
 const blockStyles = reactive({})
 const blockRefs = ref([])
 const currentAnimations = reactive({})
+const popverVisible = ref(false)
 
 // 计算属性
 const overlayColor = computed(() => props.color)
@@ -153,6 +165,14 @@ const calculateBlockStyle = (type, rect, windowSize) => {
   const { innerWidth, innerHeight } = windowSize
 
   switch(type) {
+    case 'target': {
+      return { 
+        top: `${top}px`,
+        left: `${left}px`,
+        width: `${width}px`,
+        height: `${height}px`
+      }
+    }
     case 'top':
       return {
         top: '0',
@@ -226,9 +246,10 @@ const updateRect = debounce(async () => {
     const style = calculateBlockStyle(type, rect, windowSize)
     
     // 创建动画
-    createAnimation(type, style)
+    'target' !== type && createAnimation(type, style)
     
     // 更新样式
+    console.log(type, style);
     blockStyles[type] = style
   })
 }, 10)
@@ -247,9 +268,13 @@ const handleResize = debounce(() => {
   updateRect()
 }, 100)
 
-onMounted(() => {
+onMounted(async () => {
   updateRect()
   window.addEventListener('resize', handleResize)
+  
+  setTimeout(() => {
+    popverVisible.value = true
+  }, 6000)
 })
 
 onBeforeUnmount(() => {
@@ -279,6 +304,15 @@ onBeforeUnmount(() => {
     box-sizing: border-box;
     pointer-events: auto;
     transition: background-color 0.3s ease;
+  }
+
+  .target-block {
+    position: absolute;
+    background-color: transparent;
+    display: block;
+    border: none;
+    box-sizing: border-box;
+    z-index: 0;
   }
 }
 </style>
